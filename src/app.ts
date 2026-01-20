@@ -53,9 +53,11 @@ export async function createApp(): Promise<FastifyInstance> {
 
   const allowedOrigins = [
     "http://localhost:3000",
+    "http://localhost:3001",
     "https://jv6l2lgz-3000.inc1.devtunnels.ms",
     "https://dragonai-frontend-hdf60dynn-rahmansk22s-projects.vercel.app",
-    "https://dragongpt.vercel.app"
+    "https://dragongpt.vercel.app",
+    "http://localhost"
   ];
   app.log.info({ allowedOrigins }, "Allowed CORS origins");
 
