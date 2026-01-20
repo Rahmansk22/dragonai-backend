@@ -68,15 +68,18 @@ export async function createApp(): Promise<FastifyInstance> {
       if (allowedOrigins.includes(origin)) {
         return cb(null, true);
       }
-      if (origin.endsWith(".vercel.app")) {
+      if (origin?.includes("localhost")) {
+        return cb(null, true);
+      }
+      if (origin?.endsWith(".vercel.app")) {
         return cb(null, true);
       }
       app.log.warn({ origin }, "Blocked by CORS");
       cb(new Error("Not allowed by CORS"), false);
     },
     methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "x-user-id"],
-    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization", "x-user-id", "x-groq-api-key", "x-api-key", "x-cf-account-id", "x-cf-api-key", "x-cf-model"],
+    credentials: false,
   });
 
   await app.register(healthRoutes, { prefix: "/api" });
