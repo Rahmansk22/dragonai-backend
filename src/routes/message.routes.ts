@@ -1,53 +1,63 @@
 import { FastifyInstance } from "fastify";
 import { LLMService } from "../services/llm.service";
 import { prisma } from "../db/prisma";
-import { verifyClerkAuth } from "../utils/clerk-auth";
+
 
 export async function messageRoutes(app: FastifyInstance) {
   // Send message to chat (and get LLM reply)
   app.post<{ Params: { chatId: string } }>("/chats/:chatId/messages", async (req, reply) => {
-    const auth = await verifyClerkAuth(req, reply);
-    if (!auth) return; // reply already sent in verifyClerkAuth
-    const { userId } = auth;
+    let userId = req.headers["x-user-id"] || "demo-user";
+    if (Array.isArray(userId)) userId = userId[0];
     const chatId = req.params.chatId;
-    const { text } = req.body as any;
+    const { text, model } = req.body as any;
+    const headerGroqKey = (req.headers["x-groq-api-key"] || req.headers["x-api-key"] || "") as string;
+    const groqKey = typeof headerGroqKey === "string" ? headerGroqKey.trim() : "";
+    if (groqKey) {
+      const masked = `${groqKey.slice(0, 4)}...len=${groqKey.length}`;
+      req.log.info({ maskedGroqKey: masked }, "Using request Groq key override");
+    }
     if (!text) return reply.code(400).send({ error: "Missing message text" });
     const chat = await prisma.chat.findUnique({ where: { id: chatId, userId } });
     if (!chat) return reply.code(404).send({ error: "Chat not found" });
 
-    // Load recent history (last 10 messages to stay within context limits)
+    // Count existing user messages to determine if this is the first one
+    const existingUserMessages = await prisma.message.count({
+      where: { chatId, role: "user" },
+    });
+
+    // Load recent history (last 10 messages)
     const history = await prisma.message.findMany({
       where: { chatId },
       orderBy: { createdAt: "asc" },
       skip: 0,
-      take: 10, // Reduced from 50 to keep context under control
+      take: 10,
     });
-
     const messages = history.map((m: any) => ({ role: m.role, content: m.content }));
     messages.push({ role: "user", content: text });
 
     // Save user message
     const userMsg = await prisma.message.create({ data: { role: "user", content: text, chatId, userId } });
 
-    // Get LLM reply using history
+    // Update chat title with first user message (truncate to 50 chars)
+    if (existingUserMessages === 0) {
+      const titleText = text.length > 50 ? text.slice(0, 47) + "..." : text;
+      await prisma.chat.update({
+        where: { id: chatId },
+        data: { title: titleText },
+      });
+      req.log.info({ chatId, title: titleText }, "Updated chat title with first message");
+    }
+
+    // Use only Groq LLM (LLMService)
+    let llmReply = "";
     try {
-      const llmReply = await LLMService.completeWithMessages(messages);
+      llmReply = await LLMService.completeWithMessages(messages, groqKey || undefined);
       // Save assistant message
       const assistantMsg = await prisma.message.create({ data: { role: "assistant", content: llmReply, chatId, userId } });
       return { user: userMsg, assistant: assistantMsg };
     } catch (err: any) {
       console.error("LLM error:", err);
-      // If context is still too long, try with even fewer messages
-      if (err.message?.includes("context_length_exceeded")) {
-        const minimalHistory = history.slice(-5); // Last 5 messages only
-        const minimalMessages = minimalHistory.map((m: any) => ({ role: m.role, content: m.content }));
-        minimalMessages.push({ role: "user", content: text });
-
-        const llmReply = await LLMService.completeWithMessages(minimalMessages);
-        const assistantMsg = await prisma.message.create({ data: { role: "assistant", content: llmReply, chatId, userId } });
-        return { user: userMsg, assistant: assistantMsg };
-      }
-      throw err;
+      reply.code(err.status || 500).send({ error: "llm_error", message: String(err.message) });
     }
   });
 

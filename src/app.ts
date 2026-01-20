@@ -11,8 +11,20 @@ import { imageRoutes } from "./routes/image.routes";
 import { healthRoutes } from "./routes/health.routes";
 import { authRoutes } from "./routes/auth.routes";
 
+
 console.log("[app.ts] authRoutes import:", authRoutes);
 import { messageRoutes } from "./routes/message.routes";
+
+// Masked log to verify GROQ_API_KEY is loaded (length only)
+const groqKey = (process.env.GROQ_API_KEY || "").trim();
+const maskedGroq = groqKey ? `${groqKey.slice(0, 4)}...len=${groqKey.length}` : "missing";
+console.log(`[app.ts] GROQ_API_KEY: ${maskedGroq}`);
+
+const cfAcct = (process.env.CLOUDFLARE_ACCOUNT_ID || "").trim();
+const cfKey = (process.env.CLOUDFLARE_API_KEY || "").trim();
+const maskedCfAcct = cfAcct ? `${cfAcct.slice(0, 4)}...len=${cfAcct.length}` : "missing";
+const maskedCfKey = cfKey ? `${cfKey.slice(0, 4)}...len=${cfKey.length}` : "missing";
+console.log(`[app.ts] CLOUDFLARE_ACCOUNT_ID: ${maskedCfAcct}, CLOUDFLARE_API_KEY: ${maskedCfKey}`);
 
 export async function createApp(): Promise<FastifyInstance> {
   const app = Fastify({ logger: true });
@@ -41,7 +53,9 @@ export async function createApp(): Promise<FastifyInstance> {
 
   const allowedOrigins = [
     "http://localhost:3000",
-    "https://jv6l2lgz-3000.inc1.devtunnels.ms"
+    "https://jv6l2lgz-3000.inc1.devtunnels.ms",
+    "https://dragonai-frontend-hdf60dynn-rahmansk22s-projects.vercel.app",
+    "https://dragongpt.vercel.app"
   ];
   app.log.info({ allowedOrigins }, "Allowed CORS origins");
 
@@ -68,8 +82,10 @@ export async function createApp(): Promise<FastifyInstance> {
   await app.register(authRoutes, { prefix: "/api" });
   console.log("[app.ts] Registered authRoutes");
   await app.register(messageRoutes, { prefix: "/api" });
-  await app.register(chatRoutes, { prefix: "/api" });
+
+  await app.register(chatRoutes, { prefix: "/api" }); // Use x-user-id header chat routes for dev
   await app.register(imageRoutes, { prefix: "/api" });
 
   return app;
 }
+  // await app.register(chatSessionRoutes, { prefix: "/api" }); // Disable Clerk-only routes for now

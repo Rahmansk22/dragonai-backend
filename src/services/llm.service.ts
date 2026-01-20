@@ -26,7 +26,7 @@ async function resolveFetch(): Promise<any> {
 
 export const LLMService = {
   async complete(prompt: string): Promise<string> {
-    const apiKey = process.env.GROQ_API_KEY ?? "";
+    const apiKey = (process.env.GROQ_API_KEY || "").trim();
     if (!apiKey) {
       throw new Error("Missing GROQ_API_KEY. Provide your Groq key.");
     }
@@ -182,8 +182,11 @@ Would you like me to help you work with this image in some way?`;
     }
   },
 
-  async completeWithMessages(messages: { role: string; content: string }[]): Promise<string> {
-    const apiKey = process.env.GROQ_API_KEY ?? "";
+  async completeWithMessages(
+    messages: { role: string; content: string }[],
+    apiKeyOverride?: string
+  ): Promise<string> {
+    const apiKey = (apiKeyOverride || process.env.GROQ_API_KEY || "").trim();
     if (!apiKey) {
       throw new Error("Missing GROQ_API_KEY. Provide your Groq key.");
     }

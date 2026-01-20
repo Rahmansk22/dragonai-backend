@@ -47,8 +47,6 @@ export async function authRoutes(app: FastifyInstance) {
           id: userId,
           name: name.trim(),
           email: email || `${userId}@clerk.dev`,
-          provider: "clerk",
-          providerId: userId,
         },
       });
     } else {

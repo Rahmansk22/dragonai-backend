@@ -1,11 +1,79 @@
+
 import { FastifyInstance, FastifyReply } from "fastify";
+import { z } from "zod";
 import { LLMService } from "../services/llm.service";
 import { prisma } from "../db/prisma";
-import { verifyClerkAuth } from "../utils/clerk-auth";
 
 export async function chatRoutes(app: FastifyInstance) {
+    // Get all messages for a chat
+    app.get("/chats/:chatId/messages", async (req, reply: FastifyReply) => {
+      let userId = req.headers["x-user-id"] || "demo-user";
+      let chatId = (req.params as any).chatId;
+      if (Array.isArray(userId)) userId = userId[0];
+      if (Array.isArray(chatId)) chatId = chatId[0];
+      if (!chatId || typeof chatId !== "string" || !/^[a-zA-Z0-9\-]+$/.test(chatId)) {
+        return reply.code(400).send({ error: "Invalid chatId" });
+      }
+      const chat = await prisma.chat.findFirst({ where: { id: chatId, userId } });
+      if (!chat) return reply.code(404).send({ error: "Chat not found" });
+      const messages = await prisma.message.findMany({
+        where: { chatId },
+        orderBy: { createdAt: "asc" },
+      });
+      return reply.send(messages);
+    });
+  // List all chats for the authenticated user
+  app.get("/chats", async (req, reply: FastifyReply) => {
+    let userId = req.headers["x-user-id"] || "demo-user";
+    if (Array.isArray(userId)) userId = userId[0];
+    try {
+      const chats = await prisma.chat.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+      });
+      return reply.send(chats);
+    } catch (err) {
+      reply.code(500).send({ error: "Failed to fetch chats", details: err && typeof err === 'object' && 'message' in err ? String(err.message) : String(err) });
+    }
+  });
+
+  // Create a new chat for the authenticated user
+  const chatCreateSchema = z.object({
+    title: z.string().min(1).max(100).optional()
+  });
+  app.post("/chats", async (req, reply: FastifyReply) => {
+    let userId = req.headers["x-user-id"] || "demo-user";
+    if (Array.isArray(userId)) userId = userId[0];
+    const bodyResult = chatCreateSchema.safeParse(req.body);
+    if (!bodyResult.success) return reply.code(400).send({ error: "Invalid chat input" });
+    const { title } = bodyResult.data;
+    try {
+      let user = await prisma.user.findUnique({ where: { id: userId } });
+      if (!user) {
+        user = await prisma.user.create({
+          data: { id: userId, email: "", name: "" },
+        });
+      }
+      const chat = await prisma.chat.create({
+        data: {
+          userId: user.id,
+          title: title && typeof title === "string" ? title : "New Chat",
+        },
+      });
+      return reply.send(chat);
+    } catch (err) {
+      reply.code(500).send({ error: "Failed to create chat", details: err && typeof err === 'object' && 'message' in err ? String(err.message) : String(err) });
+    }
+  });
+
+  // Send a message to a chat and get assistant response
+  const chatMsgSchema = z.object({
+    message: z.string().min(1).max(2000)
+  });
   app.post("/chat", async (req, reply: FastifyReply) => {
-    const { message } = req.body as any;
+    const bodyResult = chatMsgSchema.safeParse(req.body);
+    if (!bodyResult.success) return reply.code(400).send({ error: "Invalid chat message input" });
+    const { message } = bodyResult.data;
     try {
       const content = await LLMService.complete(message);
       return { role: "assistant", content };
@@ -14,63 +82,31 @@ export async function chatRoutes(app: FastifyInstance) {
       reply.code(status);
       return {
         error: "llm_error",
-        message: err?.message ?? "Unknown LLM error",
+        message: String(err?.message ?? "Unknown LLM error"),
       };
     }
   });
-      // ...existing code...
-
-  // Chat session routes handle chat creation and listing (JWT-protected)
-  // Removed duplicate /chats endpoints to avoid Fastify route conflicts.
 
   // Update chat title
+  const chatTitleSchema = z.object({
+    title: z.string().min(1).max(100)
+  });
   app.put("/chats/:chatId/title", async (req, reply: FastifyReply) => {
-    const auth = await verifyClerkAuth(req, reply);
-    if (!auth) return;
-    const { userId } = auth;
-
-    const chatId = (req.params as any).chatId;
-    const { title } = req.body as { title?: string };
-
-    if (!chatId || typeof chatId !== "string") {
+    let userId = req.headers["x-user-id"] || "demo-user";
+    let chatId = (req.params as any).chatId;
+    if (Array.isArray(userId)) userId = userId[0];
+    if (Array.isArray(chatId)) chatId = chatId[0];
+    if (!chatId || typeof chatId !== "string" || !/^[a-zA-Z0-9\-]+$/.test(chatId)) {
       return reply.code(400).send({ error: "Invalid chatId" });
     }
-    if (!title || typeof title !== "string") {
-      return reply.code(400).send({ error: "Missing or invalid title" });
-    }
-
-    // Verify user owns this chat
-    const chat = await prisma.chat.findUnique({ where: { id: chatId, userId } });
+    const bodyResult = chatTitleSchema.safeParse(req.body);
+    if (!bodyResult.success) return reply.code(400).send({ error: "Missing or invalid title" });
+    const { title } = bodyResult.data;
+    const chat = await prisma.chat.findFirst({ where: { id: chatId, userId } });
     if (!chat) return reply.code(404).send({ error: "Chat not found" });
-
     return prisma.chat.update({
       where: { id: chatId },
       data: { title: title.trim() },
     });
   });
-      // ...existing code...
-
-  // Delete a chat and its messages
-  app.delete("/chats/:chatId", async (req, reply: FastifyReply) => {
-    const auth = await verifyClerkAuth(req, reply);
-    if (!auth) return;
-    const { userId } = auth;
-
-    const { chatId } = req.params as any;
-    const id = chatId;
-
-    // Verify user owns this chat
-    const chat = await prisma.chat.findUnique({ where: { id, userId } });
-    if (!chat) return reply.code(404).send({ error: "Chat not found" });
-
-    await prisma.message.deleteMany({
-      where: { chatId: id },
-    });
-    await prisma.chat.delete({
-      where: { id },
-    });
-    return { success: true };
-  });
-      // ...existing code...
 }
-
