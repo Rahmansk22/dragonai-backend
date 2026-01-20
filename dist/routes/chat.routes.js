@@ -57,7 +57,7 @@ async function chatRoutes(app) {
             let user = await prisma_1.prisma.user.findUnique({ where: { id: userId } });
             if (!user) {
                 user = await prisma_1.prisma.user.create({
-                    data: { id: userId, email: "", name: "" },
+                    data: { id: userId, email: `${userId}@temp.local`, name: "" },
                 });
             }
             const chat = await prisma_1.prisma.chat.create({

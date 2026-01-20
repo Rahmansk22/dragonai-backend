@@ -18,6 +18,7 @@ import { messageRoutes } from "./routes/message.routes";
 // Masked log to verify GROQ_API_KEY is loaded (length only)
 const groqKey = (process.env.GROQ_API_KEY || "").trim();
 const maskedGroq = groqKey ? `${groqKey.slice(0, 4)}...len=${groqKey.length}` : "missing";
+console.log("[startup] GROQ_API_KEY:", maskedGroq);
 console.log(`[app.ts] GROQ_API_KEY: ${maskedGroq}`);
 
 const cfAcct = (process.env.CLOUDFLARE_ACCOUNT_ID || "").trim();

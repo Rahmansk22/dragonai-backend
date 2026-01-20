@@ -61,6 +61,7 @@ async function resolveFetch() {
 exports.LLMService = {
     async complete(prompt) {
         const apiKey = (process.env.GROQ_API_KEY || "").trim();
+        console.log("[LLM] GROQ_API_KEY present:", apiKey ? `Yes (${apiKey.substring(0, 7)}...)` : "NO - Missing!");
         if (!apiKey) {
             throw new Error("Missing GROQ_API_KEY. Provide your Groq key.");
         }
@@ -205,6 +206,7 @@ Would you like me to help you work with this image in some way?`;
     },
     async completeWithMessages(messages, apiKeyOverride) {
         const apiKey = (apiKeyOverride || process.env.GROQ_API_KEY || "").trim();
+        console.log("[LLM] Using GROQ key:", apiKey ? `${apiKey.slice(0, 4)}...len=${apiKey.length}` : "missing");
         if (!apiKey) {
             throw new Error("Missing GROQ_API_KEY. Provide your Groq key.");
         }
