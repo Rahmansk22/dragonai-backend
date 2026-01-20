@@ -49,7 +49,7 @@ async function chatSessionRoutes(app) {
         const { userId } = auth;
         // Delete all messages for this user's chats
         const userChats = await prisma_1.prisma.chat.findMany({ where: { userId } });
-        const chatIds = userChats.map(c => c.id);
+        const chatIds = userChats.map((c) => c.id);
         if (chatIds.length > 0) {
             await prisma_1.prisma.message.deleteMany({
                 where: { chatId: { in: chatIds } },

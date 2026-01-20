@@ -1,44 +1,30 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.verifyClerkAuth = verifyClerkAuth;
+const backend_1 = require("@clerk/backend");
 /**
- * Extracts Clerk userId from Authorization header (JWT) in Fastify request.
- * Returns userId string if valid, else sends 401 and returns null.
+ * Verifies Clerk JWT using Clerk backend SDK. Attaches user payload to req if valid.
  */
 async function verifyClerkAuth(req, reply) {
-    // Debug log for Authorization header
-    console.log("[verifyClerkAuth] Authorization header:", req.headers["authorization"]);
     const authHeader = req.headers["authorization"];
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        reply.code(401).send({ error: "Missing or invalid authorization header" });
-        return null;
+        return reply.status(401).send({ error: "Missing auth token" });
     }
     const token = authHeader.replace("Bearer ", "");
-    const base64Payload = token.split(".")[1];
-    if (!base64Payload) {
-        reply.code(401).send({ error: "Invalid token" });
-        return null;
-    }
     try {
-        const decoded = JSON.parse(Buffer.from(base64Payload, "base64").toString());
-        if (!decoded || !decoded.sub) {
-            reply.code(401).send({ error: "Invalid token" });
-            return null;
+        const payload = await (0, backend_1.verifyToken)(token, {});
+        req.user = payload;
+        if (typeof payload.sub !== "string") {
+            return reply.status(401).send({ error: "Invalid Clerk token: missing sub" });
         }
-        // Log the full decoded JWT for debugging
-        console.log("[Clerk JWT FULL]", decoded);
-        // Always prefer given_name + family_name if present
-        let name = decoded.name;
-        if (decoded.given_name) {
-            name = decoded.given_name + (decoded.family_name ? ` ${decoded.family_name}` : "");
-        }
-        // Debug log for user identity
-        console.log("[Clerk JWT] userId:", decoded.sub, "name:", name, "email:", decoded.email);
-        return { userId: decoded.sub, name, email: decoded.email };
+        return {
+            userId: payload.sub,
+            name: typeof payload.name === "string" ? payload.name : undefined,
+            email: typeof payload.email === "string" ? payload.email : undefined,
+        };
     }
-    catch {
-        reply.code(401).send({ error: "Invalid token" });
-        return null;
+    catch (err) {
+        return reply.status(401).send({ error: "Invalid Clerk token" });
     }
 }
 //# sourceMappingURL=clerk-auth.js.map

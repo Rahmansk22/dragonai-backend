@@ -4,7 +4,7 @@ dotenv.config();
 
 import Fastify, { FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
-import rateLimit from "@fastify/rate-limit";
+// import rateLimit from "@fastify/rate-limit"; // Disabled - version mismatch with Fastify 4.x
 
 import { chatRoutes } from "./routes/chat.routes";
 import { imageRoutes } from "./routes/image.routes";
@@ -29,23 +29,23 @@ console.log(`[app.ts] CLOUDFLARE_ACCOUNT_ID: ${maskedCfAcct}, CLOUDFLARE_API_KEY
 export async function createApp(): Promise<FastifyInstance> {
   const app = Fastify({ logger: true });
 
-  // --- OWASP: Global Rate Limiting (IP + user-based) ---
-  await app.register(rateLimit, {
-    max: 100,
-    timeWindow: '15 minutes',
-    keyGenerator: (req) => {
-      const userId = req.headers['x-user-id'];
-      if (userId && typeof userId === 'string') return `user:${userId}`;
-      if (Array.isArray(userId) && userId[0]) return `user:${userId[0]}`;
-      return req.ip;
-    },
-    errorResponseBuilder: (req, context) => ({
-      error: 'Too Many Requests',
-      message: 'You have exceeded the allowed number of requests. Please wait and try again.',
-      statusCode: 429
-    }),
-    allowList: [],
-  });
+  // --- OWASP: Global Rate Limiting (IP + user-based) --- DISABLED for Railway
+  // await app.register(rateLimit, {
+  //   max: 100,
+  //   timeWindow: '15 minutes',
+  //   keyGenerator: (req) => {
+  //     const userId = req.headers['x-user-id'];
+  //     if (userId && typeof userId === 'string') return `user:${userId}`;
+  //     if (Array.isArray(userId) && userId[0]) return `user:${userId[0]}`;
+  //     return req.ip;
+  //   },
+  //   errorResponseBuilder: (req, context) => ({
+  //     error: 'Too Many Requests',
+  //     message: 'You have exceeded the allowed number of requests. Please wait and try again.',
+  //     statusCode: 429
+  //   }),
+  //   allowList: [],
+  // });
 
   app.get("/", async (req, reply) => {
     return { status: "ok", message: "Fastify backend is running." };
