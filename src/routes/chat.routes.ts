@@ -51,7 +51,7 @@ export async function chatRoutes(app: FastifyInstance) {
       let user = await prisma.user.findUnique({ where: { id: userId } });
       if (!user) {
         user = await prisma.user.create({
-          data: { id: userId, email: "", name: "" },
+          data: { id: userId, email: `${userId}@temp.local`, name: "" },
         });
       }
       const chat = await prisma.chat.create({
