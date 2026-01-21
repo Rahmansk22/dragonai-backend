@@ -10,6 +10,7 @@ import { chatRoutes } from "./routes/chat.routes";
 import { imageRoutes } from "./routes/image.routes";
 import { healthRoutes } from "./routes/health.routes";
 import { authRoutes } from "./routes/auth.routes";
+import { customBotRoutes } from "./routes/customBot.routes";
 
 
 console.log("[app.ts] authRoutes import:", authRoutes);
@@ -55,7 +56,7 @@ export async function createApp(): Promise<FastifyInstance> {
   const allowedOrigins = [
     "http://localhost:3000",
     "http://localhost:3001",
-    "https://jv6l2lgz-3000.inc1.devtunnels.ms",
+    "https://jv6l2lgz-3000.inc1.devtunnels.ms/",
     "https://dragonai-frontend-hdf60dynn-rahmansk22s-projects.vercel.app",
     "https://dragongpt.vercel.app",
     "http://localhost",
@@ -77,6 +78,7 @@ export async function createApp(): Promise<FastifyInstance> {
   console.log("[app.ts] Registering authRoutes...");
   await app.register(authRoutes, { prefix: "/api" });
   console.log("[app.ts] Registered authRoutes");
+  await app.register(customBotRoutes, { prefix: "/api" });
   await app.register(messageRoutes, { prefix: "/api" });
 
   await app.register(chatRoutes, { prefix: "/api" }); // Use x-user-id header chat routes for dev

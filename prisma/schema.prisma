@@ -20,6 +20,10 @@ model User {
   resetOtp  String?   @default("")
   resetOtpExpiry DateTime?
 
+  customBotName      String?
+  customBotPersona   String?
+  customBotKnowledge String?
+
   chats     Chat[]
   messages  Message[]
 }
