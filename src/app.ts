@@ -58,25 +58,15 @@ export async function createApp(): Promise<FastifyInstance> {
     "https://jv6l2lgz-3000.inc1.devtunnels.ms",
     "https://dragonai-frontend-hdf60dynn-rahmansk22s-projects.vercel.app",
     "https://dragongpt.vercel.app",
-    "http://localhost"
+    "http://localhost",
   ];
-  app.log.info({ allowedOrigins }, "Allowed CORS origins");
+  app.log.info({ allowedOrigins }, "Allowed CORS origins (now permissive)");
 
   await app.register(cors, {
+    // Loosen CORS to avoid prod blocks; optionally tighten later using allowedOrigins.
     origin: (origin, cb) => {
-      app.log.info({ origin }, "CORS check for origin");
-      if (!origin) return cb(null, true);
-      if (allowedOrigins.includes(origin)) {
-        return cb(null, true);
-      }
-      if (origin?.includes("localhost")) {
-        return cb(null, true);
-      }
-      if (origin?.endsWith(".vercel.app")) {
-        return cb(null, true);
-      }
-      app.log.warn({ origin }, "Blocked by CORS");
-      cb(new Error("Not allowed by CORS"), false);
+      app.log.info({ origin }, "CORS check for origin (permissive allow)");
+      cb(null, true);
     },
     methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "x-user-id", "x-groq-api-key", "x-api-key", "x-cf-account-id", "x-cf-api-key", "x-cf-model"],
