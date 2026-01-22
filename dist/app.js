@@ -88,17 +88,16 @@ async function createApp() {
         "https://dragonai-frontend-hdf60dynn-rahmansk22s-projects.vercel.app",
         "https://dragongpt.vercel.app",
         "http://localhost",
+        "*", // Allow all origins for production
     ];
-    app.log.info({ allowedOrigins }, "Allowed CORS origins (now permissive)");
+    app.log.info({ allowedOrigins }, "Allowed CORS origins");
     await app.register(cors_1.default, {
-        // Loosen CORS to avoid prod blocks; optionally tighten later using allowedOrigins.
-        origin: (origin, cb) => {
-            app.log.info({ origin }, "CORS check for origin (permissive allow)");
-            cb(null, true);
-        },
-        methods: ["GET", "POST", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization", "x-user-id", "x-groq-api-key", "x-api-key", "x-cf-account-id", "x-cf-api-key", "x-cf-model"],
+        origin: true, // Allow all origins
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization", "x-user-id", "x-groq-api-key", "x-api-key", "x-cf-account-id", "x-cf-api-key", "x-cf-model", "Accept", "Origin", "X-Requested-With"],
         credentials: false,
+        preflightContinue: false,
+        optionsSuccessStatus: 204,
     });
     await app.register(health_routes_1.healthRoutes, { prefix: "/api" });
     console.log("[app.ts] Registering authRoutes...");

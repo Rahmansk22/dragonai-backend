@@ -16,16 +16,17 @@ async function customBotRoutes(app) {
         persona: zod_1.z.string().min(1).max(1000),
         knowledge: zod_1.z.string().min(1).max(8000),
     });
+    const botSelect = {
+        customBotName: true,
+        customBotPersona: true,
+        customBotKnowledge: true,
+    };
     app.get("/custom-bot", async (req, reply) => {
         const userId = normalizeUserId(req.headers["x-user-id"]) || "demo-user";
-        const user = await prisma_1.prisma.user.findUnique({
+        const user = (await prisma_1.prisma.user.findUnique({
             where: { id: userId },
-            select: {
-                customBotName: true,
-                customBotPersona: true,
-                customBotKnowledge: true,
-            },
-        });
+            select: botSelect,
+        }));
         if (!user)
             return reply.code(404).send({ error: "User not found" });
         if (!user.customBotName && !user.customBotPersona && !user.customBotKnowledge) {
@@ -47,7 +48,7 @@ async function customBotRoutes(app) {
         }
         const { name, persona, knowledge } = parsed.data;
         const email = `${userId}@temp.local`;
-        const user = await prisma_1.prisma.user.upsert({
+        const user = (await prisma_1.prisma.user.upsert({
             where: { id: userId },
             update: { customBotName: name, customBotPersona: persona, customBotKnowledge: knowledge },
             create: {
@@ -58,7 +59,7 @@ async function customBotRoutes(app) {
                 customBotPersona: persona,
                 customBotKnowledge: knowledge,
             },
-        });
+        }));
         return reply.send({
             customBot: {
                 name: user.customBotName ?? "",
