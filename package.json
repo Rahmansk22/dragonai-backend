@@ -12,7 +12,7 @@
     "start": "node dist/server.js",
     "test": "jest --passWithNoTests",
     "prisma:generate": "prisma generate",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate && npm run build"
   },
   "dependencies": {
     "@clerk/backend": "^2.29.0",
